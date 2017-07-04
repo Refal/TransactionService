@@ -17,19 +17,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class TransactionController {
 
-    final TransactionService transactionService;
-
     @Autowired
-    public TransactionController(TransactionService transactionService) {
-        this.transactionService = transactionService;
-    }
+    private TransactionService transactionService;
 
 
     @RequestMapping(path = "/transactions", method = RequestMethod.POST)
     public ResponseEntity addTransactions(@RequestBody Transaction transaction) {
-        if(!transactionService.isValidTime(transaction.getTimestamp())) {
+        if (!transactionService.isValidTime(transaction.getTimestamp())) {
             return new ResponseEntity(HttpStatus.NO_CONTENT);
         }
+        transactionService.addTransaction(transaction);
         return new ResponseEntity(HttpStatus.CREATED);
     }
 

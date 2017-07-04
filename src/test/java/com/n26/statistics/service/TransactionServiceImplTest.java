@@ -7,6 +7,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import static org.junit.Assert.*;
 
 /**
@@ -14,7 +19,7 @@ import static org.junit.Assert.*;
  */
 @RunWith(JUnit4.class)
 public class TransactionServiceImplTest {
-    TransactionService transactionService;
+    private TransactionService transactionService;
 
     @Before
     public void init() {
@@ -40,11 +45,11 @@ public class TransactionServiceImplTest {
         transactionService.addTransaction(new Transaction(1.0, System.currentTimeMillis() - 1));
         Statistics currentStatistics = transactionService.getCurrentStatistics();
         assertNotNull(currentStatistics);
-        assertEquals(1.0, currentStatistics.getAvg(), 0.0001);
-        assertEquals(1.0, currentStatistics.getMax(), 0.0001);
-        assertEquals(1.0, currentStatistics.getMin(), 0.0001);
-        assertEquals(1.0, currentStatistics.getSum(), 0.0001);
-        assertEquals(1L, currentStatistics.getCount());
+        assertEquals("Avg", 1.0, currentStatistics.getAvg(), 0.0001);
+        assertEquals("Max", 1.0, currentStatistics.getMax(), 0.0001);
+        assertEquals("Min", 1.0, currentStatistics.getMin(), 0.0001);
+        assertEquals("Sum", 1.0, currentStatistics.getSum(), 0.0001);
+        assertEquals("Count", 1L, currentStatistics.getCount());
     }
 
 
@@ -55,11 +60,11 @@ public class TransactionServiceImplTest {
         transactionService.addTransaction(new Transaction(4.0, System.currentTimeMillis() - 1));
         Statistics currentStatistics = transactionService.getCurrentStatistics();
         assertNotNull(currentStatistics);
-        assertEquals(3.0, currentStatistics.getAvg(), 0.0001);
-        assertEquals(4.0, currentStatistics.getMax(), 0.0001);
-        assertEquals(2.0, currentStatistics.getMin(), 0.0001);
-        assertEquals(6.0, currentStatistics.getSum(), 0.0001);
-        assertEquals(2L, currentStatistics.getCount());
+        assertEquals("Avg", 3.0, currentStatistics.getAvg(), 0.0001);
+        assertEquals("Max", 4.0, currentStatistics.getMax(), 0.0001);
+        assertEquals("Min", 2.0, currentStatistics.getMin(), 0.0001);
+        assertEquals("Sum", 6.0, currentStatistics.getSum(), 0.0001);
+        assertEquals("Count", 2L, currentStatistics.getCount());
     }
 
     @Test
@@ -69,11 +74,46 @@ public class TransactionServiceImplTest {
         transactionService.addTransaction(new Transaction(4.0, System.currentTimeMillis() - 50000));
         Statistics currentStatistics = transactionService.getCurrentStatistics();
         assertNotNull(currentStatistics);
-        assertEquals(3.0, currentStatistics.getAvg(), 0.0001);
-        assertEquals(4.0, currentStatistics.getMax(), 0.0001);
-        assertEquals(2.0, currentStatistics.getMin(), 0.0001);
-        assertEquals(6.0, currentStatistics.getSum(), 0.0001);
-        assertEquals(2L, currentStatistics.getCount());
+        assertEquals("Avg", 3.0, currentStatistics.getAvg(), 0.0001);
+        assertEquals("Max", 4.0, currentStatistics.getMax(), 0.0001);
+        assertEquals("Min", 2.0, currentStatistics.getMin(), 0.0001);
+        assertEquals("Sum", 6.0, currentStatistics.getSum(), 0.0001);
+        assertEquals("Count", 2L, currentStatistics.getCount());
     }
 
+
+    @Test
+    public void testConcurrentAddTransactions() throws Exception {
+        transactionService = new TransactionServiceImpl();
+        int transactionsCount = 12;
+        CountDownLatch start = new CountDownLatch(transactionsCount);
+        CompletableFuture.allOf(IntStream.range(1, transactionsCount).boxed().map(value ->
+                CompletableFuture.runAsync(() ->
+                        transactionService.addTransaction(new Transaction(value, System.currentTimeMillis()))))
+                .collect(Collectors.toList())
+                .toArray(new CompletableFuture[]{})).join();
+
+        Statistics currentStatistics = transactionService.getCurrentStatistics();
+        assertNotNull(currentStatistics);
+        assertEquals("Avg", 6.0, currentStatistics.getAvg(), 0.0001);
+        assertEquals("Max", 11.0, currentStatistics.getMax(), 0.0001);
+        assertEquals("Min", 1.0, currentStatistics.getMin(), 0.0001);
+        assertEquals("Sum", 66.0, currentStatistics.getSum(), 0.0001);
+        assertEquals("Count", 11L, currentStatistics.getCount());
+    }
+
+
+    @Test
+    public void testClean() throws InterruptedException {
+        transactionService.addTransaction(new Transaction(1.0, System.currentTimeMillis() - 59000));
+        Statistics currentStatistics = transactionService.getCurrentStatistics();
+        assertNotNull(currentStatistics);
+        assertEquals("Avg", 1.0, currentStatistics.getAvg(), 0.0001);
+        assertEquals("Max", 1.0, currentStatistics.getMax(), 0.0001);
+        assertEquals("Min", 1.0, currentStatistics.getMin(), 0.0001);
+        assertEquals("Sum", 1.0, currentStatistics.getSum(), 0.0001);
+        assertEquals("Count", 1L, currentStatistics.getCount());
+        Thread.sleep(1001L);
+        assertTrue(((TransactionServiceImpl) transactionService).getStatusMap().isEmpty());
+    }
 }

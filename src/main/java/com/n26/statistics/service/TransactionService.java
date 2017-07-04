@@ -11,5 +11,7 @@ public interface TransactionService {
 
     void addTransaction(Transaction transaction);
 
+    void clear();
+
     Statistics getCurrentStatistics();
 }

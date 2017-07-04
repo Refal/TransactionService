@@ -16,53 +16,70 @@ public class Statistics implements Serializable {
     public Statistics() {
     }
 
-    public synchronized double getSum() {
+    public Statistics(Statistics statistics) {
+        this.sum = statistics.sum;
+        this.avg = statistics.avg;
+        this.max = statistics.max;
+        this.min = statistics.min;
+        this.count = statistics.count;
+    }
+
+    public Statistics(Transaction transaction) {
+        this.sum = transaction.getAmount();
+        this.avg = transaction.getAmount();
+        this.max = transaction.getAmount();
+        this.min = transaction.getAmount();
+        this.count = 1L;
+    }
+
+
+    public double getSum() {
         return sum;
     }
 
-    public synchronized void setSum(double sum) {
+    public void setSum(double sum) {
         this.sum = sum;
     }
 
-    public synchronized double getAvg() {
+    public double getAvg() {
         return avg;
     }
 
-    public synchronized void setAvg(double avg) {
+    public void setAvg(double avg) {
         this.avg = avg;
     }
 
-    public synchronized double getMax() {
+    public double getMax() {
         return max;
     }
 
-    public synchronized void setMax(double max) {
+    public void setMax(double max) {
         this.max = max;
     }
 
-    public synchronized double getMin() {
+    public double getMin() {
         return min;
     }
 
-    public synchronized void setMin(double min) {
+    public void setMin(double min) {
         this.min = min;
     }
 
-    public synchronized long getCount() {
+    public long getCount() {
         return count;
     }
 
-    public synchronized void setCount(long count) {
+    public void setCount(long count) {
         this.count = count;
     }
 
-
-    public synchronized Statistics addTransaction(Transaction transaction) {
-        sum += transaction.getAmount();
-        count++;
-        max = Math.max(max, transaction.getAmount());
-        min = Math.min(min, transaction.getAmount());
-        avg = sum / count;
-        return this;
+    public Statistics addTransaction(Transaction transaction) {
+        Statistics changed = new Statistics(this);
+        changed.sum += transaction.getAmount();
+        changed.count++;
+        changed.max = Math.max(changed.max, transaction.getAmount());
+        changed.min = Math.min(changed.min, transaction.getAmount());
+        changed.avg = changed.sum / changed.count;
+        return changed;
     }
 }

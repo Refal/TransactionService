@@ -3,6 +3,7 @@ package com.n26.statistics.controller;
 import com.n26.statistics.StatisticsServiceApplication;
 import com.n26.statistics.domain.Statistics;
 import com.n26.statistics.domain.Transaction;
+import com.n26.statistics.service.TransactionService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,10 +37,11 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 @WebAppConfiguration
 public class TransactionControllerTest {
 
+    @Autowired
+    TransactionService transactionService;
     private MediaType contentType = new MediaType(MediaType.APPLICATION_JSON.getType(),
             MediaType.APPLICATION_JSON.getSubtype(),
             Charset.forName("utf8"));
-
     @Autowired
     private WebApplicationContext webApplicationContext;
     private MockMvc mockMvc;
@@ -60,6 +62,7 @@ public class TransactionControllerTest {
     @Before
     public void setUp() throws Exception {
         this.mockMvc = webAppContextSetup(webApplicationContext).build();
+        transactionService.clear();
     }
 
     @Test
@@ -82,13 +85,28 @@ public class TransactionControllerTest {
 
 
     @Test
-    public void testGetStatistics() throws Exception {
+    public void testGetEmptyStatistics() throws Exception {
+        Statistics statistics = new Statistics();
         mockMvc.perform(get("/statistics"))
-                .andExpect(content().json(json(new Statistics())));
+                .andExpect(content().json(json(statistics)));
     }
 
 
-    protected String json(Object o) throws IOException {
+    @Test
+    public void testGetAddedTransaction() throws Exception {
+        Transaction transaction = new Transaction(1.0, System.currentTimeMillis());
+        Statistics statistics = new Statistics(transaction);
+        mockMvc.perform(post("/transactions")
+                .content(this.json(transaction))
+                .contentType(contentType))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/statistics"))
+                .andExpect(content().json(json(statistics)));
+    }
+
+
+    private String json(Object o) throws IOException {
         MockHttpOutputMessage mockHttpOutputMessage = new MockHttpOutputMessage();
         this.mappingJackson2HttpMessageConverter.write(o, MediaType.APPLICATION_JSON, mockHttpOutputMessage);
         return mockHttpOutputMessage.getBodyAsString();
